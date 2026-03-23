@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     };
 
     if (anthropicBody.system) {
-        geminiPayload.systemInstruction = {
+        geminiPayload.system_instruction = {
             parts: [{ text: anthropicBody.system }]
         };
     }
