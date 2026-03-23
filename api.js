@@ -4,8 +4,8 @@
 
 class AnthropicAPI {
     constructor() {
-        this.baseUrl = '/api/claude';
-        this.model = 'claude-3-5-sonnet-20241022'; 
+        this.baseUrl = '/api/gemini';
+        this.model = 'gemini-1.5-flash'; 
     }
 
     async callAPI(systemPrompt, userPrompt) {
