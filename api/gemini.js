@@ -20,20 +20,19 @@ export default async function handler(req, res) {
     const anthropicBody = req.body;
     
     // Map Anthropic format to Gemini format
-    const geminiContents = anthropicBody.messages.map(msg => ({
+    let geminiContents = anthropicBody.messages.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }]
     }));
 
+    // Prepend system instruction to the first message to avoid "unknown field" errors across different API versions
+    if (anthropicBody.system && geminiContents.length > 0 && geminiContents[0].role === 'user') {
+        geminiContents[0].parts[0].text = `INSTRUÇÕES DE SISTEMA:\n${anthropicBody.system}\n\n---\n\nMENSAGEM DO USUÁRIO:\n${geminiContents[0].parts[0].text}`;
+    }
+
     const geminiPayload = {
         contents: geminiContents
     };
-
-    if (anthropicBody.system) {
-        geminiPayload.system_instruction = {
-            parts: [{ text: anthropicBody.system }]
-        };
-    }
 
     // Call Gemini 1.5 Flash (Using v1 stable endpoint)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
