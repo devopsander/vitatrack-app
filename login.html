@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitaTrack - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            /* subtle animation */
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i data-lucide="activity" class="auth-logo"></i>
+                <h2>Bem-vindo ao VitaTrack</h2>
+                <p>Faça login ou cadastre-se para continuar</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Entrar</button>
+                <button class="auth-tab" data-tab="register">Cadastrar</button>
+            </div>
+
+            <form id="form-login" class="auth-form active">
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn-primary">Entrar</button>
+                <div id="login-error" style="color:#ef4444; font-size:0.8rem; margin-top:0.5rem; text-align:center;"></div>
+            </form>
+
+            <form id="form-register" class="auth-form hidden">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="reg-name" required>
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="reg-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="reg-password" required>
+                </div>
+                <button type="submit" class="btn-primary">Criar Conta</button>
+                <div id="reg-error" style="color:#ef4444; font-size:0.8rem; margin-top:0.5rem; text-align:center;"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="store.js"></script>
+    <script>
+        lucide.createIcons();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (store.isLoggedIn()) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const tabs = document.querySelectorAll('.auth-tab');
+            const loginForm = document.getElementById('form-login');
+            const regForm = document.getElementById('form-register');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    if (tab.dataset.tab === 'login') {
+                        loginForm.classList.remove('hidden');
+                        regForm.classList.add('hidden');
+                    } else {
+                        loginForm.classList.add('hidden');
+                        regForm.classList.remove('hidden');
+                    }
+                });
+            });
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const errEl = document.getElementById('login-error');
+                errEl.textContent = '';
+                try {
+                    store.login(
+                        document.getElementById('login-email').value,
+                        document.getElementById('login-password').value
+                    );
+                    window.location.href = 'index.html';
+                } catch (err) {
+                    errEl.textContent = err.message;
+                }
+            });
+
+            regForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const errEl = document.getElementById('reg-error');
+                errEl.textContent = '';
+                try {
+                    store.register(
+                        document.getElementById('reg-name').value,
+                        document.getElementById('reg-email').value,
+                        document.getElementById('reg-password').value
+                    );
+                    window.location.href = 'index.html';
+                } catch (err) {
+                    errEl.textContent = err.message;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

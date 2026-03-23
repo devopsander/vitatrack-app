@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitaTrack - Controle de Peso e Alimentação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i data-lucide="activity"></i>
+                <span>VitaTrack</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </li>
+                <li data-view="meals">
+                    <i data-lucide="utensils"></i> Refeições
+                </li>
+                <li data-view="weight">
+                    <i data-lucide="scale"></i> Peso & Medidas
+                </li>
+                <li data-view="goals">
+                    <i data-lucide="target"></i> Metas
+                </li>
+                <li data-view="history">
+                    <i data-lucide="bar-chart-2"></i> Histórico
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-greeting">
+                    <h1 id="greeting-text">Olá, Usuário! 👋</h1>
+                    <p id="motivational-quote">Carregando mensagem motivacional do dia...</p>
+                </div>
+                <div class="header-actions" style="display:flex; align-items:center; gap:1rem;">
+                    <div class="user-profile">
+                        <img src="https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff" alt="Perfil">
+                    </div>
+                    <button id="btn-logout" class="icon-btn" style="color:var(--text-secondary);" title="Sair"><i data-lucide="log-out"></i></button>
+                </div>
+            </header>
+
+            <div id="views-container">
+
+                <!-- Dashboard View -->
+                <section id="view-dashboard" class="view active">
+                    <!-- Progress Card -->
+                    <div class="card progress-card">
+                        <h3>Progresso Diário</h3>
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="120" height="120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="54"></circle>
+                                <circle class="progress-ring-circle" cx="60" cy="60" r="54" id="cal-progress-ring"></circle>
+                            </svg>
+                            <div class="progress-text">
+                                <span id="cal-consumed">0</span>
+                                <small>cal</small>
+                            </div>
+                        </div>
+                        <p class="meta-label">Meta: <span id="cal-goal">2000</span> cal</p>
+                    </div>
+
+                    <!-- Macro Cards -->
+                    <div class="macros-container">
+                        <div class="macro-card protein">
+                            <div class="macro-header">
+                                <i data-lucide="beef"></i>
+                                <span>Proteínas</span>
+                            </div>
+                            <h2 id="protein-consumed">0g</h2>
+                            <div class="macro-bar"><div class="macro-fill" id="protein-bar" style="width: 0%"></div></div>
+                            <small>Meta: <span id="protein-goal">150</span>g</small>
+                        </div>
+                        <div class="macro-card carbs">
+                            <div class="macro-header">
+                                <i data-lucide="wheat"></i>
+                                <span>Carboidratos</span>
+                            </div>
+                            <h2 id="carbs-consumed">0g</h2>
+                            <div class="macro-bar"><div class="macro-fill" id="carbs-bar" style="width: 0%"></div></div>
+                            <small>Meta: <span id="carbs-goal">250</span>g</small>
+                        </div>
+                        <div class="macro-card fat">
+                            <div class="macro-header">
+                                <i data-lucide="droplet"></i>
+                                <span>Gorduras</span>
+                            </div>
+                            <h2 id="fat-consumed">0g</h2>
+                            <div class="macro-bar"><div class="macro-fill" id="fat-bar" style="width: 0%"></div></div>
+                            <small>Meta: <span id="fat-goal">70</span>g</small>
+                        </div>
+                    </div>
+
+                    <!-- Badges / Achievements -->
+                    <div class="card achievements-card" style="grid-column: 1 / -1; display:flex; align-items:center; gap:1rem; overflow-x:auto;">
+                        <h3 style="flex-shrink:0; margin-bottom:0;">Conquistas</h3>
+                        <div id="badges-container" style="display:flex; gap:0.5rem;">
+                        </div>
+                    </div>
+
+                    <!-- Weight Chart -->
+                    <div class="card chart-card">
+                        <h3>Evolução do Peso (30 Dias)</h3>
+                        <canvas id="dashboard-weight-chart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Meals View -->
+                <section id="view-meals" class="view">
+                    <div class="meals-layout">
+                        <div class="card add-meal-card">
+                            <h3>Registrar Refeição</h3>
+                            <form id="add-meal-form">
+                                <div class="form-group">
+                                    <label>Alimento / Refeição</label>
+                                    <input type="text" id="meal-name" placeholder="Ex: 2 ovos com pão e café" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo</label>
+                                    <select id="meal-type">
+                                        <option value="cafe">Café da Manhã</option>
+                                        <option value="almoco">Almoço</option>
+                                        <option value="lanche">Lanche</option>
+                                        <option value="jantar">Jantar</option>
+                                    </select>
+                                </div>
+                                <button type="button" id="btn-analyze-ai" class="btn-ai">
+                                    <i data-lucide="sparkles"></i> Analisar com IA
+                                </button>
+                                
+                                <div id="manual-macros" class="hidden">
+                                    <!-- Manually editable after AI analysis -->
+                                    <div class="macro-inputs">
+                                        <input type="number" id="meal-cal" placeholder="Calorias">
+                                        <input type="number" id="meal-protein" placeholder="Prot (g)">
+                                        <input type="number" id="meal-carbs" placeholder="Carb (g)">
+                                        <input type="number" id="meal-fat" placeholder="Gord (g)">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-primary mt-2">Salvar Refeição</button>
+                            </form>
+                        </div>
+                        
+                        <div class="card meals-list-card">
+                            <h3>Refeições de Hoje</h3>
+                            <div id="meals-list-container">
+                                <!-- Meals populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Weight View -->
+                <section id="view-weight" class="view">
+                    <div class="card form-card">
+                        <h3>Registrar Peso e Medidas</h3>
+                        <form id="add-weight-form">
+                            <div class="form-group">
+                                <label>Peso Atual (kg)</label>
+                                <input type="number" id="weight-kg" step="0.1" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Cintura (cm) - Opcional</label>
+                                    <input type="number" id="waist-cm" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Quadril (cm) - Opcional</label>
+                                    <input type="number" id="hip-cm" step="0.1">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>% Gordura - Opcional</label>
+                                <input type="number" id="body-fat" step="0.1">
+                            </div>
+                            <button type="submit" class="btn-primary">Registrar</button>
+                        </form>
+                    </div>
+
+                    <div class="card" id="imc-card" style="display:none; text-align:center;">
+                        <h3>Seu IMC Atual</h3>
+                        <h2 id="imc-value" style="font-size: 2.5rem; margin: 1rem 0;">--</h2>
+                        <p id="imc-classification" style="font-weight:600; font-size: 1.1rem; padding: 0.5rem; border-radius: 8px; display:inline-block;">--</p>
+                    </div>
+                </section>
+
+                <!-- Goals View -->
+                <section id="view-goals" class="view">
+                    <div class="card form-card">
+                        <h3>Configurar Metas</h3>
+                        <form id="goals-form">
+                            <div class="form-group">
+                                <label>Objetivo</label>
+                                <select id="goal-type">
+                                    <option value="lose">Emagrecer</option>
+                                    <option value="maintain">Manter</option>
+                                    <option value="gain">Ganhar Massa</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Meta de Peso (kg)</label>
+                                    <input type="number" id="goal-weight" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Altura (cm)</label>
+                                    <input type="number" id="goal-height" step="1">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Meta de Calorias Diárias</label>
+                                <input type="number" id="goal-calories" step="1">
+                            </div>
+                            <button type="button" id="btn-generate-goals-ai" class="btn-ai mt-2 w-full">
+                                <i data-lucide="sparkles"></i> Sugerir Metas com IA
+                            </button>
+                            <button type="submit" class="btn-primary mt-2">Salvar Metas</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- History View -->
+                <section id="view-history" class="view">
+                     <div class="card">
+                         <h3>Histórico de Macronutrientes</h3>
+                         <canvas id="history-macros-chart"></canvas>
+                     </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- AI Assistant Floating Chat -->
+    <div id="ai-chat-widget" class="chat-widget">
+        <button id="chat-toggle-btn" class="chat-toggle-btn">
+            <i data-lucide="message-circle"></i>
+        </button>
+        <div class="chat-window hidden" id="chat-window">
+            <div class="chat-header">
+                <h3>Vitta IA</h3>
+                <button id="chat-close-btn" class="icon-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message assistant">
+                    <p>Olá! Sou seu assistente Vitta. Como posso ajudar com sua dieta ou treino hoje?</p>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Digite sua dúvida...">
+                <button id="chat-send-btn" class="icon-btn primary"><i data-lucide="send"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="store.js"></script>
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
