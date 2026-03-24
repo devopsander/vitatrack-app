@@ -37,9 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Navigation ---
     function setupNavigation() {
+        console.log("Setting up navigation listeners...");
         navItems.forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
                 const viewName = item.dataset.view;
+                console.log(`Navigation clicked: ${viewName}`);
                 if (!viewName) return;
 
                 // Update active class
@@ -53,11 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderView(viewName) {
+        const targetView = document.getElementById(`view-${viewName}`);
+        if (!targetView) {
+            console.error(`View element not found: view-${viewName}`);
+            return;
+        }
+
         views.forEach(v => v.classList.remove('active'));
-        document.getElementById(`view-${viewName}`).classList.add('active');
+        targetView.classList.add('active');
 
         // Reset scroll position to top
-        document.querySelector('.main-content').scrollTop = 0;
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) mainContent.scrollTop = 0;
 
         switch(viewName) {
             case 'dashboard':
@@ -84,8 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isDashboardRendering) return;
         isDashboardRendering = true;
 
-        const profile = store.getProfile();
-        const macros = store.getDailyMacros();
+        try {
+            const profile = store.getProfile();
+            const macros = store.getDailyMacros();
         
         // Greeting
         document.getElementById('greeting-text').textContent = `Olá, ${profile.name}! 👋`;
@@ -129,8 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Badges Update
         renderBadges();
-
-        isDashboardRendering = false;
+        } catch (err) {
+            console.error("Error rendering dashboard:", err);
+        } finally {
+            isDashboardRendering = false;
+        }
     }
 
     function renderBadges() {

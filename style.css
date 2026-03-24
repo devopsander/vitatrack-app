@@ -105,10 +105,16 @@ body {
   color: var(--emerald-600);
 }
 
+.nav-links li:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
 .nav-links li.active {
-  background: var(--grad-primary);
-  color: white;
+  background: var(--grad-primary) !important;
+  color: white !important;
   box-shadow: var(--shadow-md);
+  pointer-events: none; /* Prevents re-clicking active tab */
 }
 
 .main-content {
