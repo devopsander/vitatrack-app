@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         contents: geminiContents
     };
 
-    const modelName = anthropicBody.model || 'gemini-1.5-flash';
+    const modelName = anthropicBody.model || 'gemini-2.0-flash';
     // Call Gemini (Using v1beta which is more updated for Flash)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -51,18 +51,6 @@ export default async function handler(req, res) {
     const data = await response.json();
     
     if (!response.ok) {
-        // Diagnostic: If model not found, try to list models to see what's available
-        if (data.error && data.error.message && (data.error.message.includes("not found") || data.error.message.includes("not supported"))) {
-            try {
-                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-                const listRes = await fetch(listUrl);
-                const listData = await listRes.json();
-                const availableModels = listData.models ? listData.models.map(m => m.name.replace("models/", "")).join(", ") : "none";
-                data.error.message += `. Modelos disponíveis para sua chave: ${availableModels}`;
-            } catch (listErr) {
-                data.error.message += `. (Falha ao listar modelos: ${listErr.message})`;
-            }
-        }
         return res.status(response.status).json(data);
     }
 
