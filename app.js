@@ -32,7 +32,22 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'login.html';
         });
 
-        renderView(currentView);
+        // Initial routing based on URL hash or default
+        const initialView = window.location.hash.replace('#/', '') || currentView;
+        renderView(initialView);
+
+        // Listen for back/forward navigation
+        window.addEventListener('hashchange', () => {
+            const viewName = window.location.hash.replace('#/', '') || 'dashboard';
+            
+            // Sync sidebar UI
+            navItems.forEach(nav => {
+                nav.classList.toggle('active', nav.dataset.view === viewName);
+            });
+
+            currentView = viewName;
+            renderView(viewName);
+        });
     }
 
     // --- Navigation ---
@@ -41,15 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 const viewName = item.dataset.view;
-                console.log(`Navigation clicked: ${viewName}`);
                 if (!viewName) return;
 
-                // Update active class
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-
-                currentView = viewName;
-                renderView(viewName);
+                // Update URL which triggers hashchange listener
+                window.location.hash = `/${viewName}`;
             });
         });
     }
