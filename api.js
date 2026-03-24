@@ -8,8 +8,18 @@ class AnthropicAPI {
         this.model = 'gemini-flash-latest'; 
     }
 
-    async callAPI(systemPrompt, userPrompt) {
+    async callAPI(systemPrompt, userPrompt, imageBase64 = null) {
         try {
+            let content;
+            if (imageBase64) {
+                content = [
+                    { type: 'text', text: userPrompt },
+                    { type: 'image', source: { data: imageBase64, media_type: "image/jpeg" } }
+                ];
+            } else {
+                content = userPrompt;
+            }
+
             const response = await fetch(this.baseUrl, {
                 method: 'POST',
                 headers: {
@@ -17,10 +27,10 @@ class AnthropicAPI {
                 },
                 body: JSON.stringify({
                     model: this.model, 
-                    max_tokens: 1024,
+                    max_tokens: 2048,
                     system: systemPrompt,
                     messages: [
-                        { role: 'user', content: userPrompt }
+                        { role: 'user', content: content }
                     ]
                 })
             });
@@ -38,15 +48,29 @@ class AnthropicAPI {
         }
     }
 
-    async analyzeMeal(mealString) {
-        const sys = `Você é um nutricionista especialista. O usuário vai descrever uma refeição.
-Sua tarefa é estimar as calorias, proteínas (g), carboidratos (g) e gorduras (g) dessa refeição.
-Retorne APENAS um objeto JSON válido, sem texto adicional, no formato:
-{"calorias": 0, "proteinas": 0, "carboidratos": 0, "gorduras": 0}`;
+    async analyzeMeal(mealString, imageBase64 = null) {
+        const sys = `Você é um nutricionista especialista. 
+Sua tarefa é analisar a refeição (seja por descrição textual ou imagem).
+Estime as calorias, macronutrientes e micronutrientes principais.
+Retorne APENAS um objeto JSON válido no seguinte formato:
+{
+  "nome": "string",
+  "calorias": 0,
+  "proteinas": 0,
+  "carboidratos": 0,
+  "gorduras": 0,
+  "fibras": 0,
+  "sodio_mg": 0,
+  "acucar": 0,
+  "vitamina_c_mg": 0,
+  "ferro_mg": 0,
+  "calcio_mg": 0,
+  "comentarios": "string curta"
+}`;
 
-        const text = await this.callAPI(sys, `Refeição: ${mealString}`);
+        const prompt = imageBase64 ? `Analise esta foto de refeição: ${mealString}` : `Refeição: ${mealString}`;
+        const text = await this.callAPI(sys, prompt, imageBase64);
         try {
-            // Find JSON in the response in case Claude added markdown like \`\`\`json
             const jsonStr = text.match(/\{[\s\S]*\}/)[0];
             return JSON.parse(jsonStr);
         } catch (e) {

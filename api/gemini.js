@@ -19,15 +19,44 @@ export default async function handler(req, res) {
 
     const anthropicBody = req.body;
     
-    // Map Anthropic format to Gemini format
-    let geminiContents = anthropicBody.messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-    }));
+    // Map Anthropic-style messages to Gemini format (supporting multimodal)
+    let geminiContents = anthropicBody.messages.map(msg => {
+        let parts = [];
+        
+        if (typeof msg.content === 'string') {
+            parts.push({ text: msg.content });
+        } else if (Array.isArray(msg.content)) {
+            msg.content.forEach(part => {
+                if (part.type === 'text') {
+                    parts.push({ text: part.text });
+                } else if (part.type === 'image' || part.source) {
+                    // Supporting both {type: 'image', source: {data, media_type}} 
+                    // and simplified formats
+                    const source = part.source || part;
+                    parts.push({
+                        inline_data: {
+                            mime_type: source.media_type || "image/jpeg",
+                            data: source.data
+                        }
+                    });
+                }
+            });
+        }
 
-    // Prepend system instruction to the first message to avoid "unknown field" errors across different API versions
+        return {
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: parts
+        };
+    });
+
+    // Prepend system instruction safely
     if (anthropicBody.system && geminiContents.length > 0 && geminiContents[0].role === 'user') {
-        geminiContents[0].parts[0].text = `INSTRUÇÕES DE SISTEMA:\n${anthropicBody.system}\n\n---\n\nMENSAGEM DO USUÁRIO:\n${geminiContents[0].parts[0].text}`;
+        const textPart = geminiContents[0].parts.find(p => p.text);
+        if (textPart) {
+            textPart.text = `INSTRUÇÕES DE SISTEMA:\n${anthropicBody.system}\n\n---\n\n${textPart.text}`;
+        } else {
+            geminiContents[0].parts.unshift({ text: `INSTRUÇÕES DE SISTEMA:\n${anthropicBody.system}` });
+        }
     }
 
     const geminiPayload = {

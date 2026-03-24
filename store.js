@@ -113,19 +113,25 @@ class Store {
         return this.data.weightHistory;
     }
 
-    addWeightRecord(weight, waist, hip, bodyFat) {
+    addWeightRecord(weight, waist, hip, bodyFat, photoFront = null, photoProfile = null) {
         const today = this.getTodayDateString();
         // Check if today already has a record, if so update it
         const existingIndex = this.data.weightHistory.findIndex(r => r.date === today);
-        const record = { date: today, weight, waist, hip, bodyFat };
+        const record = { date: today, weight, waist, hip, bodyFat, photoFront, photoProfile };
         
         if (existingIndex >= 0) {
-            this.data.weightHistory[existingIndex] = record;
+            // Merge with existing to not lose data if we only update weight later
+            this.data.weightHistory[existingIndex] = { ...this.data.weightHistory[existingIndex], ...record };
         } else {
             this.data.weightHistory.push(record);
             // Sort by date
             this.data.weightHistory.sort((a, b) => a.date.localeCompare(b.date));
         }
+        this.saveData();
+    }
+
+    deleteWeightRecord(date) {
+        this.data.weightHistory = this.data.weightHistory.filter(r => r.date !== date);
         this.saveData();
     }
 

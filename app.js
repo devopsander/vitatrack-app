@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'weight':
                 renderWeightForm();
+                renderWeightHistoryTable();
                 break;
             case 'goals':
                 renderGoalsForm();
@@ -231,65 +232,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- MEALS ---
     function renderMeals() {
-        const listContainer = document.getElementById('meals-list-container');
+        const container = document.getElementById('meals-list-container');
         const meals = store.getMeals();
-
-        listContainer.innerHTML = '';
-
+        
         if (meals.length === 0) {
-            listContainer.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">Nenhuma refeição registrada hoje. Adicione a primeira!</p>';
+            container.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">Nenhuma refeição registrada hoje.</p>';
             return;
         }
 
-        const icons = {
-            cafe: 'coffee',
-            almoco: 'sun',
-            lanche: 'apple',
-            jantar: 'moon'
-        };
-
-        const labels = {
-            cafe: 'Café da Manhã',
-            almoco: 'Almoço',
-            lanche: 'Lanche',
-            jantar: 'Jantar'
-        };
-
-        meals.forEach(m => {
-            const el = document.createElement('div');
-            el.className = 'meal-item';
-            el.innerHTML = `
+        container.innerHTML = meals.map(m => `
+            <div class="meal-item card" style="margin-bottom: 1rem; padding: 1rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
                 <div class="meal-info" style="display: flex; gap: 1rem; align-items: center;">
-                    <div style="background:var(--emerald-100); padding: 0.5rem; border-radius:8px; color:var(--emerald-600)">
-                        <i data-lucide="${icons[m.type] || 'utensils'}"></i>
-                    </div>
+                    ${m.image ? `<div class="meal-img-thumbnail" style="width: 50px; height: 50px; border-radius: 8px; overflow: hidden;"><img src="${m.image}" style="width:100%; height:100%; object-fit:cover;"></div>` : ''}
                     <div>
-                        <h4>${m.name}</h4>
-                        <p>${labels[m.type]}</p>
+                        <span class="meal-type-tag" style="font-size: 0.7rem; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; color: var(--text-secondary); text-transform: uppercase;">${m.type}</span>
+                        <h4 style="margin: 0.25rem 0;">${m.name}</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary);">${m.cal} kcal • P:${m.p}g C:${m.c}g G:${m.f}g</p>
                     </div>
                 </div>
-                <div class="meal-macros">
-                    <span class="cal">${m.cal} kcal</span>
-                    <span class="macros">P:${m.p}g | C:${m.c}g | G:${m.f}g</span>
-                    <button class="icon-btn delete-meal" data-id="${m.id}" style="color:#ef4444; margin-top:0.25rem; margin-left: auto;">
-                        <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
-                    </button>
+                <div class="meal-actions" style="display: flex; gap: 0.5rem;">
+                    ${m.details && Object.keys(m.details).length > 0 ? 
+                        `<button class="icon-btn btn-nutrition" data-id="${m.id}" title="Tabela Nutricional" style="color: var(--emerald-600);"><i data-lucide="info"></i></button>` : ''}
+                    <button class="icon-btn btn-delete-meal" data-id="${m.id}" style="color: #ef4444;"><i data-lucide="trash-2"></i></button>
                 </div>
-            `;
-            listContainer.appendChild(el);
+            </div>
+        `).join('');
+
+        // Delete meal handlers
+        document.querySelectorAll('.btn-delete-meal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Excluir esta refeição?')) {
+                    store.deleteMeal(store.getTodayDateString(), btn.dataset.id);
+                    renderMeals();
+                }
+            });
         });
 
-        // Add delete listeners
-        document.querySelectorAll('.delete-meal').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.dataset.id;
-                store.deleteMeal(store.getTodayDateString(), id);
-                renderMeals();
-                // If we also want to update dashboard real-time, we could, but user navigates there later
+        // Nutrition info handlers
+        document.querySelectorAll('.btn-nutrition').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const meal = meals.find(m => m.id === btn.dataset.id);
+                showNutritionModal(meal);
             });
         });
 
         lucide.createIcons();
+        updateDashboardMacros();
+    }
+
+    function showNutritionModal(meal) {
+        const modal = document.getElementById('nutrition-modal');
+        const details = document.getElementById('nutrition-details');
+        const d = meal.details || {};
+
+        details.innerHTML = `
+            <div class="nutrition-table" style="font-family: sans-serif;">
+                <div class="nutrient-row main"><span>Calorias</span><span>${meal.cal} kcal</span></div>
+                <div class="nutrient-row main"><span>Proteínas</span><span>${meal.p} g</span></div>
+                <div class="nutrient-row main"><span>Gorduras Totais</span><span>${meal.f} g</span></div>
+                <div class="nutrient-row sub"><span>Gorduras Saturadas</span><span>${d.gorduras_saturadas || 0} g</span></div>
+                <div class="nutrient-row main"><span>Carboidratos</span><span>${meal.c} g</span></div>
+                <div class="nutrient-row sub"><span>Açúcares</span><span>${d.acucar || 0} g</span></div>
+                <div class="nutrient-row sub"><span>Fibras</span><span>${d.fibras || 0} g</span></div>
+                <div class="nutrient-row main"><span>Sódio</span><span>${d.sodio_mg || 0} mg</span></div>
+                <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="nutrient-row"><span>Vitamina C</span><span>${d.vitamina_c_mg || 0} mg</span></div>
+                <div class="nutrient-row"><span>Ferro</span><span>${d.ferro_mg || 0} mg</span></div>
+                <div class="nutrient-row"><span>Cálcio</span><span>${d.calcio_mg || 0} mg</span></div>
+                <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); font-style: italic;">${d.comentarios || ''}</p>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+    }
+
+    // Modal close behavior (move to setupForms or separate)
+    document.getElementById('close-nutrition-modal').addEventListener('click', () => {
+        document.getElementById('nutrition-modal').classList.add('hidden');
+    });
+
+    function updateDashboardMacros() {
+        // Simple helper to refresh dashboard counters if they are visible
+        if (currentView === 'dashboard') renderDashboard();
     }
 
     // --- FORMS & ACTIONS ---
@@ -298,10 +321,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnAnalyzeAI = document.getElementById('btn-analyze-ai');
         const manualMacros = document.getElementById('manual-macros');
         
+        // --- MEAL PHOTO UPLOAD ---
+        const btnUploadMealPhoto = document.getElementById('btn-upload-meal-photo');
+        const mealPhotoInput = document.getElementById('meal-photo-input');
+        const mealPhotoPreview = document.getElementById('meal-photo-preview');
+        let currentMealPhotoBase64 = null;
+
+        btnUploadMealPhoto.addEventListener('click', () => mealPhotoInput.click());
+
+        mealPhotoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentMealPhotoBase64 = event.target.result.split(',')[1];
+                    mealPhotoPreview.innerHTML = `<img src="${event.target.result}">`;
+                    mealPhotoPreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         btnAnalyzeAI.addEventListener('click', async () => {
             const mealName = document.getElementById('meal-name').value;
-            if (!mealName) {
-                alert("Por favor, digite o alimento primeiro.");
+            // Analysis can be text-only OR image-based
+            if (!mealName && !currentMealPhotoBase64) {
+                alert("Por favor, digite o alimento ou suba uma foto.");
                 return;
             }
 
@@ -310,15 +355,24 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAnalyzeAI.disabled = true;
 
             try {
-                const data = await api.analyzeMeal(mealName);
+                const data = await api.analyzeMeal(mealName || "esta refeição", currentMealPhotoBase64);
+                
+                if (!mealName && data.nome) {
+                    document.getElementById('meal-name').value = data.nome;
+                }
+                
                 document.getElementById('meal-cal').value = data.calorias || 0;
                 document.getElementById('meal-protein').value = data.proteinas || 0;
                 document.getElementById('meal-carbs').value = data.carboidratos || 0;
                 document.getElementById('meal-fat').value = data.gorduras || 0;
+                
+                // Store detailed nutrition in a temporary attribute or hidden field if needed
+                btnAnalyzeAI.dataset.nutrition = JSON.stringify(data);
+                
                 manualMacros.classList.remove('hidden');
             } catch (e) {
-                alert(e.message);
-                manualMacros.classList.remove('hidden'); // show anyway so user can type
+                alert("Erro na análise: " + e.message);
+                manualMacros.classList.remove('hidden'); 
             } finally {
                 btnAnalyzeAI.innerHTML = originalText;
                 btnAnalyzeAI.disabled = false;
@@ -329,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add Meal Submit
         document.getElementById('add-meal-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            const nutritionData = btnAnalyzeAI.dataset.nutrition ? JSON.parse(btnAnalyzeAI.dataset.nutrition) : {};
             const mealObj = {
                 name: document.getElementById('meal-name').value,
                 type: document.getElementById('meal-type').value,
@@ -336,13 +391,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 p: parseInt(document.getElementById('meal-protein').value) || 0,
                 c: parseInt(document.getElementById('meal-carbs').value) || 0,
                 f: parseInt(document.getElementById('meal-fat').value) || 0,
+                image: currentMealPhotoBase64 ? `data:image/jpeg;base64,${currentMealPhotoBase64}` : null,
+                details: nutritionData
             };
 
             store.addMeal(store.getTodayDateString(), mealObj);
             e.target.reset();
+            currentMealPhotoBase64 = null;
+            mealPhotoPreview.classList.add('hidden');
             manualMacros.classList.add('hidden');
+            delete btnAnalyzeAI.dataset.nutrition;
             renderMeals();
         });
+
+        // --- WEIGHT PHOTOS ---
+        let currentWeightPhotos = { front: null, profile: null };
+        document.querySelectorAll('.btn-photo').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const inputId = btn.dataset.target;
+                document.getElementById(inputId).click();
+            });
+        });
+
+        document.getElementById('photo-front').addEventListener('change', (e) => handleWeightPhoto(e, 'front'));
+        document.getElementById('photo-profile').addEventListener('change', (e) => handleWeightPhoto(e, 'profile'));
+
+        function handleWeightPhoto(e, type) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target.result;
+                    currentWeightPhotos[type] = base64;
+                    document.getElementById(`img-preview-${type}`).src = base64;
+                    document.getElementById('weight-photos-preview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
 
         // Add Weight
         document.getElementById('add-weight-form').addEventListener('submit', (e) => {
@@ -352,10 +438,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const hip = parseFloat(document.getElementById('hip-cm').value) || null;
             const fat = parseFloat(document.getElementById('body-fat').value) || null;
 
-            store.addWeightRecord(w, waist, hip, fat);
+            store.addWeightRecord(w, waist, hip, fat, currentWeightPhotos.front, currentWeightPhotos.profile);
             e.target.reset();
-            alert("Peso registrado com sucesso!");
+            currentWeightPhotos = { front: null, profile: null };
+            document.getElementById('weight-photos-preview').classList.add('hidden');
+            alert("Peso e medidas registrados!");
             renderWeightForm();
+        });
+
+        // TDEE Calculator
+        document.getElementById('tdee-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const age = parseInt(document.getElementById('tdee-age').value);
+            const gender = document.getElementById('tdee-gender').value;
+            const activity = parseFloat(document.getElementById('tdee-activity').value);
+            const profile = store.getProfile();
+            const history = store.getWeightHistory();
+            const weight = history.length > 0 ? history[history.length-1].weight : profile.goalWeight;
+            const height = profile.height || 170;
+
+            if (!age || !height || !weight) {
+                alert("Por favor, preencha idade, altura (em Metas) e registre seu peso primeiro.");
+                return;
+            }
+
+            // Mifflin-St Jeor Equation
+            let bmr;
+            if (gender === 'male') {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+            } else {
+                bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+            }
+
+            const tdee = Math.round(bmr * activity);
+            document.getElementById('tdee-val').textContent = tdee;
+            document.getElementById('tdee-result').classList.remove('hidden');
+        });
+
+        document.getElementById('btn-use-tdee').addEventListener('click', () => {
+            const tdee = parseInt(document.getElementById('tdee-val').textContent);
+            store.updateProfile({ goalCalories: tdee });
+            alert("Meta de calorias atualizada para " + tdee + " kcal!");
         });
 
         // Goals
@@ -427,6 +550,49 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             imcCard.style.display = 'none';
         }
+    }
+
+    function renderWeightHistoryTable() {
+        const history = store.getWeightHistory().slice().reverse(); // Show latest first
+        const tbody = document.getElementById('weight-history-body');
+        const profile = store.getProfile();
+        
+        tbody.innerHTML = history.map(h => {
+            let imc = '--';
+            if (profile.height) {
+                const hm = profile.height / 100;
+                imc = (h.weight / (hm * hm)).toFixed(1);
+            }
+
+            return `
+                <tr>
+                    <td>${formatDate(h.date)}</td>
+                    <td><strong>${h.weight} kg</strong></td>
+                    <td>${h.waist || '--'} cm</td>
+                    <td>
+                        <div style="display:flex; gap: 4px;">
+                            ${h.photoFront ? `<img src="${h.photoFront}" style="width:24px; height:24px; border-radius:4px; cursor:pointer;" onclick="window.open('${h.photoFront}')">` : ''}
+                            ${h.photoProfile ? `<img src="${h.photoProfile}" style="width:24px; height:24px; border-radius:4px; cursor:pointer;" onclick="window.open('${h.photoProfile}')">` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="icon-btn delete-weight" data-date="${h.date}" style="color:#ef4444;"><i data-lucide="trash-2" style="width:16px;"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.delete-weight').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Excluir este registro?')) {
+                    store.deleteWeightRecord(btn.dataset.date);
+                    renderWeightForm();
+                    renderWeightHistoryTable();
+                }
+            });
+        });
+
+        lucide.createIcons();
     }
 
     function renderGoalsForm() {
