@@ -56,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
         views.forEach(v => v.classList.remove('active'));
         document.getElementById(`view-${viewName}`).classList.add('active');
 
+        // Reset scroll position to top
+        document.querySelector('.main-content').scrollTop = 0;
+
         switch(viewName) {
             case 'dashboard':
                 renderDashboard();
