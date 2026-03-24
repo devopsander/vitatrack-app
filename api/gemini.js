@@ -34,9 +34,11 @@ export default async function handler(req, res) {
         contents: geminiContents
     };
 
-    const modelName = anthropicBody.model || 'gemini-1.5-flash';
+    const modelName = anthropicBody.model || 'gemini-1.5-flash-latest';
     // Call Gemini (Using v1beta which is more updated for Flash)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    console.log("Calling Gemini API:", geminiUrl.replace(apiKey, "HIDDEN"));
     
     const response = await fetch(geminiUrl, {
       method: "POST",

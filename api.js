@@ -5,7 +5,7 @@
 class AnthropicAPI {
     constructor() {
         this.baseUrl = '/api/gemini';
-        this.model = 'gemini-1.5-flash'; 
+        this.model = 'gemini-1.5-flash-latest'; 
     }
 
     async callAPI(systemPrompt, userPrompt) {
