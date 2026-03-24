@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Chart instances
     let weightChart = null;
     let historyChart = null;
+    let isDashboardRendering = false; // Guard for async dashboard render
 
     // --- Initialization ---
     initApp();
@@ -77,6 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DASHBOARD ---
     async function renderDashboard() {
+        if (isDashboardRendering) return;
+        isDashboardRendering = true;
+
         const profile = store.getProfile();
         const macros = store.getDailyMacros();
         
@@ -122,6 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Badges Update
         renderBadges();
+
+        isDashboardRendering = false;
     }
 
     function renderBadges() {
@@ -277,7 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         lucide.createIcons();
-        updateDashboardMacros();
+        // Only update dashboard if we are actually ON the dashboard
+        if (currentView === 'dashboard') {
+            renderDashboard();
+        }
     }
 
     function showNutritionModal(meal) {
@@ -310,10 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('nutrition-modal').classList.add('hidden');
     });
 
-    function updateDashboardMacros() {
-        // Simple helper to refresh dashboard counters if they are visible
-        if (currentView === 'dashboard') renderDashboard();
-    }
+    // Removed redundant updateDashboardMacros as it's now handled inline in renderMeals if needed.
 
     // --- FORMS & ACTIONS ---
     function setupForms() {

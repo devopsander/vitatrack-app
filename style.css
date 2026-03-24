@@ -318,6 +318,12 @@ body {
 
 .chart-card {
   grid-column: 1 / -1;
+  min-height: 350px;
+}
+
+canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* Forms & Inputs */
