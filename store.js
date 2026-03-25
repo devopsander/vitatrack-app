@@ -82,6 +82,44 @@ class Store {
         this.saveUsers();
     }
 
+    loginWithGoogle(userData) {
+        // If user already exists, just log in
+        if (this.users[userData.email]) {
+            this.currentUserEmail = userData.email;
+            this.data = this.users[userData.email];
+            localStorage.setItem(SESSION_KEY, userData.email);
+            // Update profile info (name, picture) from Google
+            this.data.profile.name = userData.name;
+            this.data.profile.picture = userData.picture;
+            this.saveUsers();
+            return;
+        }
+
+        // New user from Google
+        this.users[userData.email] = {
+            password: null, // No password for social login
+            profile: {
+                name: userData.name,
+                picture: userData.picture,
+                goalType: 'lose',
+                goalWeight: 75,
+                height: 170,
+                goalCalories: 2000,
+                goalProtein: 150,
+                goalCarbs: 200,
+                goalFat: 60,
+            },
+            weightHistory: [],
+            meals: {},
+            messages: []
+        };
+
+        this.currentUserEmail = userData.email;
+        this.data = this.users[userData.email];
+        localStorage.setItem(SESSION_KEY, userData.email);
+        this.saveUsers();
+    }
+
     logout() {
         this.currentUserEmail = null;
         this.data = null;
