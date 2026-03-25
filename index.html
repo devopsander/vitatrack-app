@@ -21,19 +21,26 @@
             </div>
             <ul class="nav-links">
                 <li class="active" data-view="dashboard">
-                    <a href="#/dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                    <a href="#"><i data-lucide="layout-dashboard"></i> Dashboard</a>
                 </li>
                 <li data-view="meals">
-                    <a href="#/meals"><i data-lucide="utensils"></i> Refeições</a>
+                    <a href="#"><i data-lucide="utensils-crosshair"></i> Refeições</a>
                 </li>
                 <li data-view="weight">
-                    <a href="#/weight"><i data-lucide="scale"></i> Peso & Medidas</a>
+                    <a href="#"><i data-lucide="scale"></i> Evolução</a>
                 </li>
                 <li data-view="goals">
                     <a href="#/goals"><i data-lucide="target"></i> Metas</a>
                 </li>
                 <li data-view="history">
                     <a href="#/history"><i data-lucide="bar-chart-2"></i> Histórico</a>
+                </li>
+                <li data-view="profile">
+                    <a href="#"><i data-lucide="user"></i> Perfil</a>
+                </li>
+                <!-- Admin link (hidden by default) -->
+                <li id="nav-admin" class="hidden" data-view="admin">
+                    <a href="#"><i data-lucide="shield-check"></i> Admin</a>
                 </li>
             </ul>
         </nav>
@@ -170,6 +177,30 @@
                                 <!-- Meals populated by JS -->
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- View: Profile -->
+                <section id="view-profile" class="view">
+                    <div class="card">
+                        <h3>Meu Perfil</h3>
+                        <form id="form-profile">
+                            <div class="form-group">
+                                <label>Nome</label>
+                                <input type="text" id="prof-name" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Altura (cm)</label>
+                                    <input type="number" id="prof-height" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Meta de Peso (kg)</label>
+                                    <input type="number" id="prof-goal-weight" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">Salvar Perfil</button>
+                        </form>
                     </div>
                 </section>
 
@@ -331,6 +362,45 @@
                          <canvas id="history-macros-chart"></canvas>
                      </div>
                 </section>
+
+                <!-- View: Admin (Exclusive) -->
+                <section id="view-admin" class="view">
+                    <div class="admin-grid">
+                        <div class="card stat-card">
+                            <small>Total de Usuários</small>
+                            <h2 id="admin-total-users">0</h2>
+                        </div>
+                        <div class="card stat-card">
+                            <small>Ativos Hoje</small>
+                            <h2 id="admin-active-today">0</h2>
+                        </div>
+                        <div class="card stat-card">
+                            <small>Novos (7 dias)</small>
+                            <h2 id="admin-new-users">0</h2>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3>Lista de Usuários</h3>
+                            <button class="btn-outline btn-sm" onclick="app.refreshAdmin()"><i data-lucide="refresh-cw" style="width: 14px;"></i></button>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>E-mail</th>
+                                        <th>Meta</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-table">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -370,9 +440,10 @@
         </div>
     </div>
 
-    <script src="store.js"></script>
-    <script src="api.js"></script>
-    <script src="app.js"></script>
+    <!-- scripts modules -->
+    <script type="module" src="store.js"></script>
+    <script type="module" src="api.js"></script>
+    <script type="module" src="app.js"></script>
     <script>
         lucide.createIcons();
     </script>

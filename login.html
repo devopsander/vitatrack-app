@@ -73,39 +73,37 @@
             </div>
 
             <div id="google-btn-container" style="display: flex; justify-content: center; margin-top: 1rem;">
-                <div id="g_id_onload"
-                     data-client_id="410607917261-7nrlbj2gni89cvrlgeu2eor1vbot4okb.apps.googleusercontent.com"
-                     data-context="signin"
-                     data-ux_mode="popup"
-                     data-callback="handleCredentialResponse"
-                     data-auto_prompt="false">
-                </div>
-
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="rectangular"
-                     data-theme="outline"
-                     data-text="signin_with"
-                     data-size="large"
-                     data-logo_alignment="left">
-                </div>
+                <button id="google-btn-custom" class="btn-ai" style="width: 100%; max-width: 300px; background: white; color: var(--text-primary); border: 1px solid var(--border-color);">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 18px; margin-right: 10px;">
+                    Entrar com Google
+                </button>
             </div>
         </div>
     </div>
 
-    <script src="store.js"></script>
-    <script>
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signInWithPopup, 
+            GoogleAuthProvider 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import store from './store.js';
+
         lucide.createIcons();
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (store.isLoggedIn()) {
-                window.location.href = 'index.html';
-                return;
-            }
-
             const tabs = document.querySelectorAll('.auth-tab');
             const loginForm = document.getElementById('form-login');
             const regForm = document.getElementById('form-register');
+            const googleBtn = document.getElementById('google-btn-custom');
+
+            // Wait for store to check current session
+            store.onUserLoaded = (user) => {
+                if (user) window.location.href = 'index.html';
+            };
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -121,64 +119,89 @@
                 });
             });
 
-            loginForm.addEventListener('submit', (e) => {
+            loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const errEl = document.getElementById('login-error');
                 errEl.textContent = '';
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-password').value;
+
                 try {
-                    store.login(
-                        document.getElementById('login-email').value,
-                        document.getElementById('login-password').value
-                    );
+                    await signInWithEmailAndPassword(auth, email, pass);
                     window.location.href = 'index.html';
                 } catch (err) {
-                    errEl.textContent = err.message;
+                    errEl.textContent = "Erro ao entrar: " + err.message;
                 }
             });
 
-            regForm.addEventListener('submit', (e) => {
+            regForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const errEl = document.getElementById('reg-error');
                 errEl.textContent = '';
+                const name = document.getElementById('reg-name').value;
+                const email = document.getElementById('reg-email').value;
+                const pass = document.getElementById('reg-password').value;
+
                 try {
-                    store.register(
-                        document.getElementById('reg-name').value,
-                        document.getElementById('reg-email').value,
-                        document.getElementById('reg-password').value
-                    );
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                    const user = userCredential.user;
+                    
+                    // Create initial profile in Firestore
+                    await setDoc(doc(db, 'users', email), {
+                        profile: {
+                            name: name,
+                            goalType: 'lose',
+                            goalWeight: 75,
+                            height: 170,
+                            goalCalories: 2000,
+                            goalProtein: 150,
+                            goalCarbs: 200,
+                            goalFat: 60,
+                        },
+                        weightHistory: [],
+                        meals: {},
+                        messages: []
+                    });
+
                     window.location.href = 'index.html';
                 } catch (err) {
-                    errEl.textContent = err.message;
+                    errEl.textContent = "Erro ao cadastrar: " + err.message;
+                }
+            });
+
+            googleBtn.addEventListener('click', async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    const user = result.user;
+
+                    // Check if user exists in Firestore, if not create
+                    const userDoc = await getDoc(doc(db, 'users', user.email));
+                    if (!userDoc.exists()) {
+                        await setDoc(doc(db, 'users', user.email), {
+                            profile: {
+                                name: user.displayName,
+                                picture: user.photoURL,
+                                goalType: 'lose',
+                                goalWeight: 75,
+                                height: 170,
+                                goalCalories: 2000,
+                                goalProtein: 150,
+                                goalCarbs: 200,
+                                goalFat: 60,
+                            },
+                            weightHistory: [],
+                            meals: {},
+                            messages: []
+                        });
+                    }
+                    window.location.href = 'index.html';
+                } catch (err) {
+                    console.error("Google login error", err);
+                    alert("Erro no login com Google: " + err.message);
                 }
             });
         });
-
-        // Callback for Google Sign-In
-        function handleCredentialResponse(response) {
-            try {
-                // Decode JWT (Base64Url to UTF-8)
-                const base64Url = response.credential.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-
-                const payload = JSON.parse(jsonPayload);
-                console.log("Google User:", payload);
-                
-                const userData = {
-                    name: payload.name,
-                    email: payload.email,
-                    picture: payload.picture
-                };
-
-                store.loginWithGoogle(userData);
-                window.location.href = 'index.html';
-            } catch (err) {
-                console.error("Erro ao processar login Google:", err);
-                alert("Erro ao entrar com Google. Tente novamente.");
-            }
-        }
     </script>
 </body>
 </html>

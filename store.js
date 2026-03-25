@@ -1,133 +1,61 @@
 /**
- * VitaTrack Data Store Management (Using LocalStorage)
+ * VitaTrack Data Store Management (Using Firebase Firestore)
  */
-
-const USERS_DB_KEY = 'vitatrack_users';
-const SESSION_KEY = 'vitatrack_session';
+import { db, auth } from './firebase-config.js';
+import { 
+    doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, orderBy 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 class Store {
     constructor() {
-        this.users = this.loadUsers();
-        this.currentUserEmail = localStorage.getItem(SESSION_KEY);
-        this.data = this.currentUserEmail ? this.users[this.currentUserEmail] : null;
+        this.currentUserEmail = null;
+        this.data = null;
+        this.onUserLoaded = null; // Callback for app initialization
 
-        // Try to handle old data migration if someone complains
-        const oldData = localStorage.getItem('vitatrack_data');
-        if (oldData && !this.users['legacy_user@vitatrack.com']) {
-            try {
-                const parsed = JSON.parse(oldData);
-                parsed.password = '123456'; 
-                this.users['legacy_user@vitatrack.com'] = parsed;
-                this.saveUsers();
-            } catch(e){}
-            localStorage.removeItem('vitatrack_data');
-        }
+        // Listen for Auth changes
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                this.currentUserEmail = user.email;
+                this.data = await this.loadUserData(user.email);
+                if (this.onUserLoaded) this.onUserLoaded(user);
+            } else {
+                this.currentUserEmail = null;
+                this.data = null;
+                if (this.onUserLoaded) this.onUserLoaded(null);
+            }
+        });
     }
 
-    loadUsers() {
-        try {
-            const raw = localStorage.getItem(USERS_DB_KEY);
-            if (raw) return JSON.parse(raw);
-        } catch (e) {
-            console.error("Failed to parse localStorage", e);
+    async loadUserData(email) {
+        const userDoc = await getDoc(doc(db, 'users', email));
+        if (userDoc.exists()) {
+            return userDoc.data();
         }
-        return {};
+        return null;
     }
 
-    saveUsers() {
+    async saveData() {
         if (this.currentUserEmail && this.data) {
-            this.users[this.currentUserEmail] = this.data;
+            await setDoc(doc(db, 'users', this.currentUserEmail), this.data);
         }
-        localStorage.setItem(USERS_DB_KEY, JSON.stringify(this.users));
-    }
-
-    saveData() {
-        this.saveUsers();
     }
 
     // --- Auth Methods ---
-    login(email, password) {
-        const user = this.users[email];
-        if (!user) throw new Error('Usuário não encontrado');
-        if (user.password !== password) throw new Error('Senha incorreta');
-        
-        this.currentUserEmail = email;
-        this.data = user;
-        localStorage.setItem(SESSION_KEY, email);
-    }
-
-    register(name, email, password) {
-        if (this.users[email]) throw new Error('E-mail já está em uso');
-        
-        this.users[email] = {
-            password: password,
-            profile: {
-                name: name,
-                goalType: 'lose',
-                goalWeight: 75,
-                height: 170,
-                goalCalories: 2000,
-                goalProtein: 150,
-                goalCarbs: 200,
-                goalFat: 60,
-            },
-            weightHistory: [],
-            meals: {},
-            messages: []
-        };
-        
-        this.currentUserEmail = email;
-        this.data = this.users[email];
-        localStorage.setItem(SESSION_KEY, email);
-        this.saveUsers();
-    }
-
-    loginWithGoogle(userData) {
-        // If user already exists, just log in
-        if (this.users[userData.email]) {
-            this.currentUserEmail = userData.email;
-            this.data = this.users[userData.email];
-            localStorage.setItem(SESSION_KEY, userData.email);
-            // Update profile info (name, picture) from Google
-            this.data.profile.name = userData.name;
-            this.data.profile.picture = userData.picture;
-            this.saveUsers();
-            return;
-        }
-
-        // New user from Google
-        this.users[userData.email] = {
-            password: null, // No password for social login
-            profile: {
-                name: userData.name,
-                picture: userData.picture,
-                goalType: 'lose',
-                goalWeight: 75,
-                height: 170,
-                goalCalories: 2000,
-                goalProtein: 150,
-                goalCarbs: 200,
-                goalFat: 60,
-            },
-            weightHistory: [],
-            meals: {},
-            messages: []
-        };
-
-        this.currentUserEmail = userData.email;
-        this.data = this.users[userData.email];
-        localStorage.setItem(SESSION_KEY, userData.email);
-        this.saveUsers();
-    }
-
-    logout() {
+    async logout() {
+        await signOut(auth);
         this.currentUserEmail = null;
         this.data = null;
-        localStorage.removeItem(SESSION_KEY);
     }
 
     isLoggedIn() {
         return !!this.currentUserEmail;
+    }
+
+    isAdmin() {
+        // Define admin emails here
+        const admins = ['mouraandersonsilva@gmail.com']; 
+        return this.currentUserEmail && admins.includes(this.currentUserEmail);
     }
 
     getTodayDateString() {
@@ -138,59 +66,61 @@ class Store {
 
     // Profile & Goals
     getProfile() {
-        return this.data.profile;
+        return this.data ? this.data.profile : null;
     }
 
-    updateProfile(updates) {
+    async updateProfile(updates) {
+        if (!this.data) return;
         this.data.profile = { ...this.data.profile, ...updates };
-        this.saveData();
+        await this.saveData();
     }
 
     // Weight
     getWeightHistory() {
-        return this.data.weightHistory;
+        return this.data ? this.data.weightHistory : [];
     }
 
-    addWeightRecord(weight, waist, hip, bodyFat, photoFront = null, photoProfile = null) {
+    async addWeightRecord(weight, waist, hip, bodyFat, photoFront = null, photoProfile = null) {
+        if (!this.data) return;
         const today = this.getTodayDateString();
-        // Check if today already has a record, if so update it
         const existingIndex = this.data.weightHistory.findIndex(r => r.date === today);
         const record = { date: today, weight, waist, hip, bodyFat, photoFront, photoProfile };
         
         if (existingIndex >= 0) {
-            // Merge with existing to not lose data if we only update weight later
             this.data.weightHistory[existingIndex] = { ...this.data.weightHistory[existingIndex], ...record };
         } else {
             this.data.weightHistory.push(record);
-            // Sort by date
             this.data.weightHistory.sort((a, b) => a.date.localeCompare(b.date));
         }
-        this.saveData();
+        await this.saveData();
     }
 
-    deleteWeightRecord(date) {
+    async deleteWeightRecord(date) {
+        if (!this.data) return;
         this.data.weightHistory = this.data.weightHistory.filter(r => r.date !== date);
-        this.saveData();
+        await this.saveData();
     }
 
     // Meals
     getMeals(dateStr = this.getTodayDateString()) {
-        return this.data.meals[dateStr] || [];
+        return this.data && this.data.meals ? (this.data.meals[dateStr] || []) : [];
     }
 
-    addMeal(dateStr, mealObj) {
+    async addMeal(dateStr, mealObj) {
+        if (!this.data) return;
+        if (!this.data.meals) this.data.meals = {};
         if (!this.data.meals[dateStr]) {
             this.data.meals[dateStr] = [];
         }
         mealObj.id = Date.now().toString();
         this.data.meals[dateStr].push(mealObj);
-        this.saveData();
+        await this.saveData();
     }
 
-    deleteMeal(dateStr, id) {
-        if (this.data.meals[dateStr]) {
+    async deleteMeal(dateStr, id) {
+        if (this.data && this.data.meals && this.data.meals[dateStr]) {
             this.data.meals[dateStr] = this.data.meals[dateStr].filter(m => m.id !== id);
-            this.saveData();
+            await this.saveData();
         }
     }
 
@@ -207,19 +137,53 @@ class Store {
 
     // Chat History
     getChatHistory() {
-        return this.data.messages || [];
+        return this.data ? (this.data.messages || []) : [];
     }
 
-    addChatMessage(role, content) {
+    async addChatMessage(role, content) {
+        if (!this.data) return;
         if (!this.data.messages) this.data.messages = [];
         this.data.messages.push({ role, content });
-        this.saveData();
+        await this.saveData();
     }
 
-    resetData() {
-        localStorage.removeItem(STORAGE_KEY);
-        this.data = this.loadData();
+    // Admin Stats
+    async getAdminStats() {
+        if (!this.isAdmin()) return null;
+        
+        try {
+            const usersSnap = await getDocs(collection(db, 'users'));
+            const users = [];
+            usersSnap.forEach(doc => {
+                users.push({ email: doc.id, ...doc.data() });
+            });
+
+            const totalUsers = users.length;
+            const today = this.getTodayDateString();
+            
+            // Logic for "Active Today" (count users who have a meal or weight record today)
+            const activeToday = users.filter(u => {
+                const updatedToday = (u.meals && u.meals[today]) || 
+                                     (u.weightHistory && u.weightHistory.some(r => r.date === today));
+                return updatedToday;
+            }).length;
+
+            return {
+                totalUsers,
+                activeToday,
+                usersList: users.map(u => ({
+                    name: u.profile.name,
+                    email: u.email,
+                    goal: u.profile.goalType
+                }))
+            };
+        } catch (e) {
+            console.error("Error fetching admin stats", e);
+            return null;
+        }
     }
 }
 
 const store = new Store();
+export default store;
+window.store = store; // Expose globally for legacy scripts

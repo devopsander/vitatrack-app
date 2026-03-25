@@ -926,6 +926,55 @@ td {
   overflow-y: auto;
 }
 
+/* Admin Dashboard */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 2rem;
+  background: var(--grad-primary);
+  color: white;
+  border: none;
+}
+
+.stat-card small {
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.stat-card h2 {
+  font-size: 2.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+.badge {
+  background: var(--grad-accent);
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.text-center { text-align: center; }
+
 /* Nutrition Table Styling */
 .nutrient-row {
   display: flex;
