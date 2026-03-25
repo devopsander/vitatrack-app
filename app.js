@@ -107,50 +107,53 @@ document.addEventListener('DOMContentLoaded', () => {
             const profile = store.getProfile();
             const macros = store.getDailyMacros();
         
-        // Greeting
-        document.getElementById('greeting-text').textContent = `Olá, ${profile.name}! 👋`;
+            // Greeting
+            document.getElementById('greeting-text').textContent = `Olá, ${profile.name}! 👋`;
 
-        // Load Motivation
-        loadMotivation();
+            // Sequential render of components with internal try-catches for robustness
+            try {
+                loadMotivation();
+            } catch(e) { console.error("Motivation load failed", e); }
 
-        // Progress Ring (Calories)
-        const calGoal = profile.goalCalories;
-        const calConsumed = macros.cal;
-        document.getElementById('cal-goal').textContent = calGoal;
-        
-        // Animate counter
-        animateCounter('cal-consumed', calConsumed);
+            // Progress Ring (Calories)
+            try {
+                const calGoal = profile.goalCalories;
+                const calConsumed = macros.cal;
+                document.getElementById('cal-goal').textContent = calGoal;
+                animateCounter('cal-consumed', calConsumed);
 
-        const progressRing = document.getElementById('cal-progress-ring');
-        const radius = progressRing.r.baseVal.value;
-        const circumference = radius * 2 * Math.PI;
-        
-        let percent = calConsumed / calGoal;
-        if (percent > 1) percent = 1;
-        const offset = circumference - percent * circumference;
-        
-        // Add a slight delay for animation effect
-        setTimeout(() => {
-            progressRing.style.strokeDashoffset = offset;
-            if (percent > 0.9) {
-                progressRing.style.stroke = 'var(--amber-500)'; // Warning if close to limit
-            } else {
-                progressRing.style.stroke = 'var(--emerald-500)';
-            }
-        }, 100);
+                const progressRing = document.getElementById('cal-progress-ring');
+                const radius = progressRing.r.baseVal.value;
+                const circumference = radius * 2 * Math.PI;
+                let percent = calConsumed / calGoal;
+                if (percent > 1) percent = 1;
+                const offset = circumference - percent * circumference;
+                
+                setTimeout(() => {
+                    progressRing.style.strokeDashoffset = offset;
+                    progressRing.style.stroke = percent > 0.9 ? 'var(--amber-500)' : 'var(--emerald-500)';
+                }, 100);
+            } catch(e) { console.error("Progress ring render failed", e); }
 
-        // Macro Cards
-        updateMacroCard('protein', macros.p, profile.goalProtein);
-        updateMacroCard('carbs', macros.c, profile.goalCarbs);
-        updateMacroCard('fat', macros.f, profile.goalFat);
+            // Macro Cards
+            try {
+                updateMacroCard('protein', macros.p, profile.goalProtein);
+                updateMacroCard('carbs', macros.c, profile.goalCarbs);
+                updateMacroCard('fat', macros.f, profile.goalFat);
+            } catch(e) { console.error("Macro cards render failed", e); }
 
-        // Weight Chart
-        renderDashboardWeightChart();
-        
-        // Badges Update
-        renderBadges();
+            // Weight Chart
+            try {
+                renderDashboardWeightChart();
+            } catch(e) { console.error("Weight chart render failed", e); }
+            
+            // Badges Update
+            try {
+                renderBadges();
+            } catch(e) { console.error("Badges render failed", e); }
+
         } catch (err) {
-            console.error("Error rendering dashboard:", err);
+            console.error("Critical error rendering dashboard:", err);
         } finally {
             isDashboardRendering = false;
         }
@@ -199,10 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const macros = store.getDailyMacros();
         const profile = store.getProfile();
         
-        if (!api.getKey()) {
-            quoteEl.textContent = "Configure sua chave da API para receber mensagens motivacionais!";
-            return;
-        }
+        // The API key is now handled securely by the Vercel Proxy. 
+        // No client-side key check needed.
+
 
         quoteEl.classList.add('loading-dots');
         quoteEl.textContent = "Gerando";
